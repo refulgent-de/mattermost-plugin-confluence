@@ -1,65 +1,13 @@
-version: 2.0
-jobs:
-  build:
-    docker:
-      - image: circleci/golang:1.13-node
-    working_directory: /go/src/github.com/mattermost/mattermost-plugin-confluence
-    steps:
-      - checkout
-      - restore_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}
-      - type: shell
-        name: 'Checks the code style, tests, builds and bundles the plugin.'
-        command: make all
-        environment:
-          TERM: dumb
-      - save_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-      - store_artifacts:
-          path: ./dist
-          destination: build
-      - persist_to_workspace:
-          root: .
-          paths:
-            - dist
-  release:
-    docker:
-      - image: cibuilds/github:0.12
-    working_directory: /go/src/github.com/mattermost/mattermost-plugin-confluence
-    steps:
-      - checkout
-      - attach_workspace:
-          at: .
-      - run:
-          name: "Publish Release on GitHub"
-          command: |
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_TAG} dist/
-
+# Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+# Use a package of configuration called an orb.
+orbs:
+  # Declare a dependency on the welcome-orb
+  welcome: circleci/welcome-orb@0.4.1
+# Orchestrate or schedule a set of jobs
 workflows:
-  version: 2
-  build:
+  # Name the workflow "welcome"
+  welcome:
+    # Run the welcome/run job in its own container
     jobs:
-      - build:
-          filters:
-            branches:
-              only: /.*/
-            tags:
-              ignore: /.*/
-  build-and-release:
-    jobs:
-      - build:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /.*/
-      - release:
-          requires:
-            - build
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /.*/
+      - welcome/run
